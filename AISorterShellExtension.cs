@@ -21,10 +21,9 @@ namespace AIFileSorterShellExtension
         // Write diagnostic info on load
         static AISorterShellExtension()
         {
-            // Добавляем обработчик разрешения сборок
+            // Add assembly resolve handlerк
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) => {
                 try {
-                    // Логируем запрос на сборку
                     string logDir = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                         "AIFileSorter", "diagnostics"
@@ -39,13 +38,11 @@ namespace AIFileSorterShellExtension
                         $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Requested assembly: {args.Name}\n"
                     );
                     
-                    // Проверяем запрашиваемую сборку
                     var requestedAssembly = new System.Reflection.AssemblyName(args.Name);
                     if (requestedAssembly.Name == "System.Runtime.CompilerServices.Unsafe" && 
                         requestedAssembly.Version.Major == 4 && 
                         requestedAssembly.Version.Minor == 0) 
                     {
-                        // Ищем эту сборку в папке рядом с нашей DLL
                         string assemblyPath = Path.Combine(
                             Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
                             "System.Runtime.CompilerServices.Unsafe.dll"
@@ -171,10 +168,8 @@ namespace AIFileSorterShellExtension
                     Enabled = CanUndoLastSort() // Only enable if undo is available
                 };
                 
-                // Загрузка пользовательской иконки
                 try
                 {
-                    // Если иконка добавлена как "Внедренный ресурс" 
                     string resourceName = "AIFileSorterShellExtension.generative.png";
                     using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
                     {
@@ -184,7 +179,6 @@ namespace AIFileSorterShellExtension
                         }
                         else
                         {
-                            // Пробуем загрузить как внешний файл
                             string iconPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "generative.png");
                             if (File.Exists(iconPath))
                             {
@@ -199,7 +193,6 @@ namespace AIFileSorterShellExtension
                 }
                 catch
                 {
-                    // В случае ошибки загрузки используем стандартную иконку
                     sortFilesItem.Image = System.Drawing.SystemIcons.Application.ToBitmap();
                 }
                 
@@ -208,9 +201,8 @@ namespace AIFileSorterShellExtension
                     Text = "Settings...",
                 };
 
-                // Add event handlers with explicit delegate methods for debugging
                 sortFilesItem.Click += OnSortFilesClicked;
-                undoSortItem.Click += OnUndoSortClicked; // Add handler for undo option
+                undoSortItem.Click += OnUndoSortClicked; 
                 settingsItem.Click += OnSettingsClicked;
 
                 // Add items to the menu
@@ -401,16 +393,12 @@ namespace AIFileSorterShellExtension
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Sort Files clicked\n"
                 );
                 
-                // Используем настройку web search
                 bool useWebSearch = LoadUseWebSearch();
                 
-                // Используем новый менеджер курсора, который заменяет системный курсор
                 using (CursorManager.ShowWaitCursor())
                 {
-                    // Set the sort time at the start of the operation
                     _lastSortTime = DateTime.Now;
                     
-                    // Вызываем синхронную обертку асинхронного метода
                     Task.Run(async () => 
                     {
                         var result = await SortFolderWithAIAsync(useWebSearch);
@@ -426,9 +414,7 @@ namespace AIFileSorterShellExtension
                             _lastSortOperations.Clear();
                         }
                     }).GetAwaiter().GetResult();
-                }
-                
-                // Курсор автоматически восстановится благодаря IDisposable
+                }               
             }
             catch (Exception ex)
             {
@@ -462,14 +448,14 @@ namespace AIFileSorterShellExtension
             }
         }
 
-        // Новый асинхронный метод
+        // New Async method to sort folder with AI
         private async Task<Tuple<bool, List<Dictionary<string, string>>>> SortFolderWithAIAsync(bool useWebSearch)
         {
             List<Dictionary<string, string>> operations = new List<Dictionary<string, string>>();
             
             try
             {
-                // Копируем всю логику из SortFolderWithAI
+                // copy logic
                 string diagDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "AIFileSorter", "diagnostics"
@@ -485,10 +471,10 @@ namespace AIFileSorterShellExtension
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - SortFolderWithAIAsync started, useWebSearch={useWebSearch}\n"
                 );
 
-                // Определяем целевую папку
+                // Determine the target folder
                 string folderPath = null;
                 
-                // Проверяем если есть выбранная папка
+                // Check if a folder is selected
                 if (SelectedItemPaths != null && SelectedItemPaths.Any())
                 {
                     folderPath = SelectedItemPaths.First();
@@ -499,8 +485,8 @@ namespace AIFileSorterShellExtension
                 }
                 else
                 {
-                    // Если папка не выбрана (клик по фону папки), получаем текущий каталог проводника
-                    // Пробуем получить каталог из FolderPath свойства, если оно есть
+                    // If no folder is selected (right-click on folder background), get the current Explorer directory
+                    // Try to get the directory from the FolderPath property, if it exists
                     try
                     {
                         var folderPathProperty = this.GetType().GetProperty("FolderPath", 
@@ -526,12 +512,11 @@ namespace AIFileSorterShellExtension
                         );
                     }
                     
-                    // Если всё еще нет пути, пробуем получить путь текущей директории из Shell
+                    // If we still don't have a path, try to get the current directory from the Shell
                     if (string.IsNullOrEmpty(folderPath))
                     {
                         try 
                         {
-                            // Попытка получить путь текущей директории через Windows API
                             IntPtr shellWindow = Win32Helper.GetShellWindow();
                             if (shellWindow != IntPtr.Zero)
                             {
@@ -553,7 +538,7 @@ namespace AIFileSorterShellExtension
                     }
                 }
 
-                // Проверяем, получили ли мы путь к папке
+                // check if we have a valid folder path
                 if (string.IsNullOrEmpty(folderPath))
                 {
                     File.AppendAllText(
@@ -741,7 +726,7 @@ namespace AIFileSorterShellExtension
                         Size = new System.Drawing.Size(150, 20)
                     };
                     
-                    // Добавляем чекбокс для Web Search
+                    // Adding checkb for Web Search
                     var webSearchCheckBox = new CheckBox
                     {
                         Text = "Enable web search (more accurate categorization)",
@@ -870,7 +855,7 @@ namespace AIFileSorterShellExtension
             }
         }
 
-        // Добавляем методы для хранения настройки web search
+        // Add methods for storing settings web search
         private bool LoadUseWebSearch()
         {
             try
@@ -886,13 +871,13 @@ namespace AIFileSorterShellExtension
                         }
                     }
                 }
-                // По умолчанию включаем web search
+
                 return true;
             }
             catch (Exception ex)
             {
                 LogError(ex);
-                return true; // По умолчанию включено
+                return true; 
             }
         }
 
@@ -915,7 +900,7 @@ namespace AIFileSorterShellExtension
         }
     }
 
-    // Вспомогательный класс для работы с Windows API
+    // Auxiliary class for work with Windows API
     internal static class Win32Helper
     {
         [DllImport("user32.dll")]
@@ -945,22 +930,36 @@ namespace AIFileSorterShellExtension
         // Constants for SystemParametersInfo
         public const uint SPI_SETCURSORS = 0x0057;
         
-        // Получение текущей директории из активного окна проводника
+        // Getting the current directory from the active explorer window via Shell COM.
         public static string GetCurrentDirectoryFromExplorer(IntPtr shellWindow)
         {
             try
             {
-                GetWindowThreadProcessId(shellWindow, out uint processId);
-                
-                // Здесь должна быть более сложная логика для получения пути через Explorer COM интерфейсы
-                // Это упрощенная версия, которая может не работать во всех случаях
-                
-                // Как простое решение, используем текущий каталог процесса
+                Type shellWindowsType = Type.GetTypeFromProgID("Shell.Application");
+                dynamic shellWindows = Activator.CreateInstance(shellWindowsType);
+                foreach (var window in shellWindows.Windows())
+                {
+                    try
+                    {
+                        int hwnd = window.HWND;
+                        if ((IntPtr)hwnd == shellWindow)
+                        {
+                            string url = window.LocationURL as string;
+                            if (!string.IsNullOrEmpty(url) && url.StartsWith("file://"))
+                            {
+                                string path = Uri.UnescapeDataString(url.Replace("file:///", "").Replace('/', '\\'));
+                                if (Directory.Exists(path))
+                                    return path;
+                            }
+                        }
+                    }
+                    catch { }
+                }
                 return Environment.CurrentDirectory;
             }
             catch
             {
-                return null;
+                return Environment.CurrentDirectory;
             }
         }
     }

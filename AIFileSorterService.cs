@@ -20,14 +20,13 @@ namespace AIFileSorterShellExtension
         private readonly HttpClient _httpClient;
         private readonly string _logFilePath;
 
-        // Create a logger that writes to a file
         private void LogInfo(string message)
         {
             try
             {
                 File.AppendAllText(_logFilePath, $"[INFO] {DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}\n");
             }
-            catch { /* Ignore logging errors */ }
+            catch { }
         }
 
         private void LogError(string message, Exception ex = null)
@@ -1158,7 +1157,7 @@ namespace AIFileSorterShellExtension
                     LogInfo($"Saved move history to {historyFile}");
                 }
 
-                // После завершения сортировки проверяем, остались ли несортированные файлы
+                // After sorting is complete, check if there are any unsorted files left
                 string[] remainingFiles = Directory.GetFiles(basePath, "*", SearchOption.TopDirectoryOnly)
                     .Select(Path.GetFileName)
                     .Where(f => !movedFiles.Contains(f))
@@ -1168,14 +1167,14 @@ namespace AIFileSorterShellExtension
                 {
                     LogInfo($"Found {remainingFiles.Length} unsorted files. Creating 'Unsorted' folder for them.");
                     
-                    // Создаем папку для несортированных файлов
+                    // Create a folder for unsorted files
                     string unsortedFolder = Path.Combine(basePath, "Unsorted");
                     if (!Directory.Exists(unsortedFolder))
                     {
                         Directory.CreateDirectory(unsortedFolder);
                     }
                     
-                    // Перемещаем несортированные файлы
+                    // Move unsorted files
                     foreach (string fileName in remainingFiles)
                     {
                         string source = Path.Combine(basePath, fileName);
